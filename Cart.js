@@ -1,16 +1,11 @@
 const mongoose = require('mongoose');
-
+const Schema = mongoose.Schema;
 // Define the schema for the Wishlist
 const CartSchema = new mongoose.Schema({
-  productId: {
-    type: String,
-  },
-  userID: [{
-    type: String, 
-  }],
-  addedby:{
-    type: String,
-  }
+    productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+    userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+    addedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true }
+
 });
 
 // Create the Wishlist model
