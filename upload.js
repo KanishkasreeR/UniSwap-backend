@@ -3,6 +3,7 @@ const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const Cart = require('./Cart')
 const Product = require('./Products');
+const Category = require('./Category'); 
 
 const router = express.Router();
 
@@ -136,5 +137,53 @@ router.get('/products', async (req, res) => {
       res.status(500).json({ error: 'Internal server error' });
     }
   });
+
+  
+
+const categoryImages = {
+  "Fruits & Vegetables": "https://via.placeholder.com/150?text=Fruits+%26+Vegetables",
+  "Dairy & Bakery": "https://via.placeholder.com/150?text=Dairy+%26+Bakery",
+  "Staples": "https://via.placeholder.com/150?text=Staples",
+  "Snacks & Branded Foods": "https://via.placeholder.com/150?text=Snacks+%26+Branded+Foods",
+  "Beverages": "https://via.placeholder.com/150?text=Beverages",
+  "Personal Care": "https://via.placeholder.com/150?text=Personal+Care",
+  "Home Care": "https://via.placeholder.com/150?text=Home+Care",
+  "Books": "https://via.placeholder.com/150?text=Books",
+  "Pets": "https://via.placeholder.com/150?text=Pets"
+};
+
+// router.get('/categories-with-products', async (req, res) => {
+//   try {
+//     const categories = await Product.distinct('category');
+//     const categoriesWithImages = categories.map(category => ({
+//       name: category,
+//       imageUrl: categoryImages[category] || 'https://via.placeholder.com/150?text=No+Image'
+//     }));
+
+//     res.status(200).json(categoriesWithImages);
+//   } catch (error) {
+//     console.error('Error occurred while fetching categories with products:', error);
+//     res.status(500).json({ error: 'Internal server error' });
+//   }
+// });
+router.get('/categories-with-products', async (req, res) => {
+  try {
+    // Get distinct categories from products
+    const categories = await Product.distinct('category');
+    
+    // Find categories in Category collection
+    const categoriesWithImages = await Category.find({ name: { $in: categories } });
+    
+    // const categoriesWithPredefinedImages = categoriesWithImages.map(category => ({
+    //   name: category.name,
+    //   imageUrl: category.imageUrl || categoryImages[category.name] || 'https://via.placeholder.com/150?text=No+Image'
+    // }));
+
+    res.status(200).json(categoriesWithImages);
+  } catch (error) {
+    console.error('Error occurred while fetching categories with products:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 module.exports = router;
