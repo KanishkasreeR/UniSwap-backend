@@ -272,6 +272,22 @@ router.get('/products', async (req, res) => {
     }
   });
 
+  router.get('/products3/:userId', async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const products = await Product.find({ userId: userId });
+      
+      if (!products) {
+        return res.status(404).json({ error: 'Products not found for this user' });
+      }
+  
+      res.json(products);
+    } catch (error) {
+      console.error('Error fetching products by user ID:', error);
+      res.status(500).json({ error: 'Failed to fetch products' });
+    }
+  });
+
   
 
 const categoryImages = {
