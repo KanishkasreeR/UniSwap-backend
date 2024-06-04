@@ -236,9 +236,9 @@ router.delete('/removecart/:userId/:productId', async (req, res) => {
   }
 });
 
-router.get('/products/:productId', async (req, res) => {
+router.get('/products2', async (req, res) => {
   try {
-    const productId = req.params.productId;
+    const productId = req.query.productId;
     const product = await Product.findById(productId);
     
     if (!product) {
@@ -251,6 +251,7 @@ router.get('/products/:productId', async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch product' });
   }
 });
+
 
 router.get('/products', async (req, res) => {
     try {
