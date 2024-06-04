@@ -2,8 +2,9 @@ const express = require('express');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const Cart = require('./Cart')
+const Wishlist = require('./Wishlist')
 const Product = require('./Products');
-const Category = require('./Category'); 
+
 
 const router = express.Router();
 
@@ -82,42 +83,111 @@ router.post('/uploadProducts', (req, res) => {
             res.status(500).json({ error: 'Internal server error' });
         }
     });
-    router.post('/addToCart', async (req, res) => {
-        try {
-          const { productId, userId, addedby } = req.body;
-      
-          // Check if any of the required values are missing
-          if (!productId || !userId || !addedby) {
-            return res.status(400).json({ error: 'Missing productId, userId, or addedby' });
-          }
-      
-          // Check if the cart exists for the customer
-          let cart = await Cart.findOne({ productId });
-      
-          // If Cart doesn't exist, create a new one
-          if (!cart) {
-            cart = new Cart({ productId, userId, addedby });
-          }
-      
-          // Check if the product is already in the Cart
-          if (cart.products.includes(productId)) {
-            return res.status(400).json({ error: 'Product already exists in Cart' });
-          }
-      
-          // Add the productId to the Cart
-          cart.products.push(productId);
-          
-          // Save the updated Cart
-          await cart.save();
-      
-          // Respond with success message
-          res.status(200).json({ message: 'Product added to Cart successfully' });
-        } catch (error) {
-          console.error('Error adding product to Cart:', error);
-          res.status(500).json({ error: 'Failed to add product to Cart' });
-        }
-      });
 });
+
+router.post('/addToCart', async (req, res) => {
+  try {
+    const { productId, userId, addedBy } = req.body;
+
+    // Check if any of the required values are missing
+    if (!productId || !userId || !addedBy) {
+      return res.status(400).json({ error: 'Missing productId, userId, or addedBy' });
+    }
+
+    // Check if the cart exists for the customer
+    let cart = await Cart.findOne({ userId });
+
+    // If Cart doesn't exist, create a new one
+    if (!cart) {
+      cart = new Cart({ userId, addedBy, products: [] });
+    }
+
+    // Check if the product is already in the Cart
+    if (cart.products.includes(productId)) {
+      return res.status(400).json({ error: 'Product already exists in Cart' });
+    }
+
+    // Add the productId to the Cart
+    cart.products.push(productId);
+    
+    // Save the updated Cart
+    await cart.save();
+
+    // Respond with success message
+    res.status(200).json({ message: 'Product added to Cart successfully' });
+  } catch (error) {
+    console.error('Error adding product to Cart:', error);
+    res.status(500).json({ error: 'Failed to add product to Cart' });
+  }
+});
+
+
+router.post('/addToWishlist', async (req, res) => {
+  try {
+    const { productId, userId, addedBy } = req.body;
+
+    // Check if any of the required values are missing
+    if (!productId || !userId || !addedBy) {
+      return res.status(400).json({ error: 'Missing productId, userId, or addedby' });
+    }
+
+    // Check if the wishlist exists for the customer
+    let wishlist = await Wishlist.findOne({ userId });
+
+    // If Wishlist doesn't exist, create a new one
+    if (!wishlist) {
+      wishlist = new Wishlist({ userId, addedBy, products: [] });
+    }
+
+    // Check if the product is already in the Wishlist
+    if (wishlist.products.includes(productId)) {
+      return res.status(400).json({ error: 'Product already exists in Wishlist' });
+    }
+
+    // Add the productId to the Wishlist
+    wishlist.products.push(productId);
+    
+    // Save the updated Wishlist
+    await wishlist.save();
+
+    // Respond with success message
+    res.status(200).json({ message: 'Product added to Wishlist successfully' });
+  } catch (error) {
+    console.error('Error adding product to Wishlist:', error);
+    res.status(500).json({ error: 'Failed to add product to Wishlist' });
+  }
+});
+
+
+
+router.get('/cart', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const cart = await Cart.findOne({ userId }).populate('products'); // Assuming the cart schema and model are named "Cart"
+    if (!cart) {
+      return res.status(404).json({ error: 'Cart not found' });
+    }
+    res.json(cart.products);
+  } catch (error) {
+    console.error('Error fetching cart products:', error);
+    res.status(500).json({ error: 'Failed to fetch cart products' });
+  }
+});
+
+router.get('/wishlist', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    const cart = await Wishlist.findOne({ userId }).populate('products'); // Assuming the cart schema and model are named "Cart"
+    if (!cart) {
+      return res.status(404).json({ error: 'Cart not found' });
+    }
+    res.json(cart.products);
+  } catch (error) {
+    console.error('Error fetching cart products:', error);
+    res.status(500).json({ error: 'Failed to fetch cart products' });
+  }
+});
+
 
 router.get('/products', async (req, res) => {
     try {
@@ -151,39 +221,5 @@ const categoryImages = {
   "Books": "https://via.placeholder.com/150?text=Books",
   "Pets": "https://via.placeholder.com/150?text=Pets"
 };
-
-// router.get('/categories-with-products', async (req, res) => {
-//   try {
-//     const categories = await Product.distinct('category');
-//     const categoriesWithImages = categories.map(category => ({
-//       name: category,
-//       imageUrl: categoryImages[category] || 'https://via.placeholder.com/150?text=No+Image'
-//     }));
-
-//     res.status(200).json(categoriesWithImages);
-//   } catch (error) {
-//     console.error('Error occurred while fetching categories with products:', error);
-//     res.status(500).json({ error: 'Internal server error' });
-//   }
-// });
-router.get('/categories-with-products', async (req, res) => {
-  try {
-    // Get distinct categories from products
-    const categories = await Product.distinct('category');
-    
-    // Find categories in Category collection
-    const categoriesWithImages = await Category.find({ name: { $in: categories } });
-    
-    // const categoriesWithPredefinedImages = categoriesWithImages.map(category => ({
-    //   name: category.name,
-    //   imageUrl: category.imageUrl || categoryImages[category.name] || 'https://via.placeholder.com/150?text=No+Image'
-    // }));
-
-    res.status(200).json(categoriesWithImages);
-  } catch (error) {
-    console.error('Error occurred while fetching categories with products:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
 
 module.exports = router;
