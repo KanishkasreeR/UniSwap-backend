@@ -188,6 +188,55 @@ router.get('/wishlist', async (req, res) => {
   }
 });
 
+router.delete('/removewishlist/:userId/:productId', async (req, res) => {
+  try {
+    const productId = req.params.productId;
+    const userId = req.params.userId;
+
+    // Find the wishlist document for the customer
+    const wishlist = await Wishlist.findOneAndUpdate(
+      { userId: userId },
+      { $pull: { products: productId } },
+      { new: true }
+    );
+
+    // Check if the wishlist exists
+    if (!wishlist) {
+      return res.status(404).json({ error: 'Wishlist not found' });
+    }
+
+    res.json(wishlist);
+  } catch (error) {
+    console.error('Error removing product from wishlist:', error);
+    res.status(500).json({ error: 'Failed to remove product from wishlist' });
+  }
+});
+
+router.delete('/removecart/:userId/:productId', async (req, res) => {
+  try {
+    const productId = req.params.productId;
+    const userId = req.params.userId;
+
+    // Find the wishlist document for the user
+    const wishlist = await Cart.findOneAndUpdate(
+      { userId: userId },
+      { $pull: { products: productId } },
+      { new: true }
+    );
+
+    // Check if the wishlist exists
+    if (!wishlist) {
+      return res.status(404).json({ error: 'Wishlist not found' });
+    }
+
+    res.json(wishlist);
+  } catch (error) {
+    console.error('Error removing product from wishlist:', error);
+    res.status(500).json({ error: 'Failed to remove product from wishlist' });
+  }
+});
+
+
 
 router.get('/products', async (req, res) => {
     try {
