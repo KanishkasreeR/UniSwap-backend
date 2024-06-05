@@ -1,13 +1,12 @@
 const express = require('express');
 const multer = require('multer');
+const webpush = require('web-push');
 const cloudinary = require('cloudinary').v2;
 const Cart = require('./Cart')
 const Wishlist = require('./Wishlist')
 const Product = require('./Products');
 const Order = require('./OrderSchema.js');
-const admin = require('firebase-admin');
-const serviceAccount = require('./config/serviceAccountKey.json');
-
+const User = require("./UserSchema");
 
 const router = express.Router();
 
@@ -19,6 +18,17 @@ const storage = multer.diskStorage({
       cb(null, Date.now() + '-' + file.originalname);
     }
 });
+
+const vapidKeys = {
+  publicKey: 'BG-gHGGmgLtEgtlDNhe_8mK5wJeGQ6ALM2CVfpXaBIRb-3AdU3H5D4_ZcAeISfXpV2y4K_aj5-JItyNmOA628B0',
+  privateKey: 'LiJaDYu9sAcsxwGiIAQP7nliLgKoNSYsGwiVhPNSdbY'
+};
+
+webpush.setVapidDetails(
+  'mailto:kanishkasree804@gmail.com',
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
+);
   
 // Initialize Cloudinary
 cloudinary.config({
@@ -332,70 +342,61 @@ router.get('/products', async (req, res) => {
 //   }
 // });
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
-
-// Function to send push notification
-const sendNotificationToSeller = async (sellerId) => {
-  const message = {
-    notification: {
-      title: 'New Order',
-      body: 'You have a new order. Please check your orders.',
-    },
-    topic: `seller_${sellerId}`, // Use a topic to target specific seller
-  };
-
-  try {
-    await admin.messaging().send(message);
-    console.log('Push notification sent successfully to seller:', sellerId);
-  } catch (error) {
-    console.error('Error sending push notification to seller:', error);
-  }
-};
-
-// Your existing route to create orders
 router.post('/createorders', async (req, res) => {
   const { userId, sellerId, products } = req.body;
 
   try {
-      // Validate the input data if necessary
-      
-      // Create a new order
-      const newOrder = new Order({
-          userId,
-          products: products.map(product => ({
-              productId: product.productId,
-              adTitle: product.adTitle,
-              description: product.description,
-              price: product.price,
-              category: product.category,
-              imageUrl: product.imageUrl
-          })),
-          sellerId,
-          orderDate: Date.now()
-      });
+    // Validate the input data if necessary
 
-      // Save the new order
-      const savedOrder = await newOrder.save();
+    // Create a new order
+    const newOrder = new Order({
+      userId,
+      products: products.map(product => ({
+        productId: product.productId,
+        adTitle: product.adTitle,
+        description: product.description,
+        price: product.price,
+        category: product.category,
+        imageUrl: product.imageUrl
+      })),
+      sellerId,
+      orderDate: Date.now()
+    });
 
-      // Send push notification to seller
-      sendNotificationToSeller(sellerId);
+    // Save the new order
+    const savedOrder = await newOrder.save();
 
-      // Remove products from cart
-      const productIds = products.map(product => product.productId);
-      await Cart.updateOne(
-          { userId },
-          { $pull: { products: { productId: { $in: productIds } } } }
-      );
+    // Remove products from cart
+    const productIds = products.map(product => product.productId);
+    await Cart.updateOne(
+      { userId },
+      { $pull: { products: { productId: { $in: productIds } } } }
+    );
 
-      // Remove products from the product schema
-      await Product.deleteMany({ _id: { $in: productIds } });
+    // Remove products from the product schema
+    await Product.deleteMany({ _id: { $in: productIds } });
 
-      res.status(201).json(savedOrder);
+    // Fetch the seller's push subscription details
+    const seller = await User.findById(sellerId);
+    if (!seller || !seller.pushSubscription) {
+      throw new Error('Seller push subscription not found');
+    }
+
+    // Send push notification to the seller
+    const notificationPayload = {
+      notification: {
+        title: 'New Order Received',
+        body: `You have received a new order with ${products.length} products.`,
+        data: { url: 'http://localhost:3000/' } // URL to open when notification is clicked
+      }
+    };
+
+    await webpush.sendNotification(seller.pushSubscription, JSON.stringify(notificationPayload));
+
+    res.status(201).json(savedOrder);
   } catch (error) {
-      console.error('Error creating order:', error);
-      res.status(500).json({ message: 'Failed to create order', error });
+    console.error('Error creating order:', error);
+    res.status(500).json({ message: 'Failed to create order', error });
   }
 });
 
