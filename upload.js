@@ -289,68 +289,84 @@ router.get('/products', async (req, res) => {
     }
   });
 
-  // router.post('/createorders', async (req, res) => {
-  //   const { userId, products, sellerId } = req.body;
-  
-  //   const newOrder = new Order({
-  //     userId,
-  //     products,
-  //     sellerId,
-  //     orderDate: Date.now() // Explicitly set the order date to the current date and time
-  //   });
-  
-  //   try {
-  //     // Save the new order
-  //     const savedOrder = await newOrder.save();
-  
-  //     // Remove products from cart
-  //     await Cart.updateOne(
-  //       { userId },
-  //       { $pull: { products: { productId: { $in: products.map(p => p.productId) } } } }
-  //     );
-  
-  //     res.status(201).json(savedOrder);
-  //   } catch (error) {
-  //     res.status(500).json({ message: 'Failed to create order', error });
-  //   }
-  // });
+// router.post('/createorders', async (req, res) => {
+//     const { userId, sellerId, products } = req.body;
 
-  router.post('/createorders', async (req, res) => {
-    const { userId, sellerId, products } = req.body;
-
-    try {
-        // Validate the input data if necessary
+//     try {
+//         // Validate the input data if necessary
         
-        const newOrder = new Order({
-            userId,
-            products: products.map(product => ({
-                productId: product.productId,
-                adTitle: product.adTitle,
-                description: product.description,
-                price: product.price,
-                category: product.category,
-                imageUrl: product.imageUrl
-            })),
-            sellerId,
-            orderDate: Date.now()
-        });
+//         const newOrder = new Order({
+//             userId,
+//             products: products.map(product => ({
+//                 productId: product.productId,
+//                 adTitle: product.adTitle,
+//                 description: product.description,
+//                 price: product.price,
+//                 category: product.category,
+//                 imageUrl: product.imageUrl
+//             })),
+//             sellerId,
+//             orderDate: Date.now()
+//         });
 
-        // Save the new order
-        const savedOrder = await newOrder.save();
+//         // Save the new order
+//         const savedOrder = await newOrder.save();
 
-        // Remove products from cart
-        const productIds = products.map(product => product.productId);
-        await Cart.updateOne(
-            { userId },
-            { $pull: { products: { productId: { $in: productIds } } } }
-        );
+//         // Remove products from cart
+//         const productIds = products.map(product => product.productId);
+//         await Cart.updateOne(
+//             { userId },
+//             { $pull: { products: { productId: { $in: productIds } } } }
+//         );
 
-        res.status(201).json(savedOrder);
-    } catch (error) {
-        console.error('Error creating order:', error);
-        res.status(500).json({ message: 'Failed to create order', error });
-    }
+//         res.status(201).json(savedOrder);
+//     } catch (error) {
+//         console.error('Error creating order:', error);
+//         res.status(500).json({ message: 'Failed to create order', error });
+//     }
+// });
+
+router.post('/createorders', async (req, res) => {
+  const { userId, sellerId, products } = req.body;
+
+  try {
+      // Validate the input data if necessary
+      
+      // Create a new order
+      const newOrder = new Order({
+          userId,
+          products: products.map(product => ({
+              productId: product.productId,
+              adTitle: product.adTitle,
+              description: product.description,
+              price: product.price,
+              category: product.category,
+              imageUrl: product.imageUrl
+          })),
+          sellerId,
+          orderDate: Date.now()
+      });
+
+      // Save the new order
+      const savedOrder = await newOrder.save();
+
+      // Remove products from cart
+      const productIds = products.map(product => product.productId);
+      await Cart.updateOne(
+          { userId },
+          { $pull: { products: { productId: { $in: productIds } } } }
+      );
+
+      // Remove products from the product schema
+      await Product.deleteMany({ _id: { $in: productIds } });
+
+      res.status(201).json(savedOrder);
+  } catch (error) {
+      console.error('Error creating order:', error);
+      res.status(500).json({ message: 'Failed to create order', error });
+  }
 });
+
 
 router.get('/getbuyerorders', async (req, res) => {
   const { userId } = req.query; // Change variable name from "customerId" to "userId"
