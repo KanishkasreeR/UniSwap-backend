@@ -313,24 +313,49 @@ router.get('/products2', async (req, res) => {
 });
 
 
+// router.get('/products', async (req, res) => {
+//     try {
+//       const { category } = req.query;
+//       const filter = {};
+  
+//       // Filter by category if provided
+//       if (category) {
+//         filter.category = category;
+//       }
+  
+//       const products = await Product.find(filter);
+  
+//       res.status(200).json(products);
+//     } catch (error) {
+//       console.error('Error occurred while fetching products:', error);
+//       res.status(500).json({ error: 'Internal server error' });
+//     }
+//   });
+
 router.get('/products', async (req, res) => {
-    try {
-      const { category } = req.query;
-      const filter = {};
-  
-      // Filter by category if provided
-      if (category) {
-        filter.category = category;
-      }
-  
-      const products = await Product.find(filter);
-  
-      res.status(200).json(products);
-    } catch (error) {
-      console.error('Error occurred while fetching products:', error);
-      res.status(500).json({ error: 'Internal server error' });
+  try {
+    const { category, userIdToExclude } = req.query;
+    const filter = {};
+
+    // Filter by category if provided
+    if (category) {
+      filter.category = category;
     }
-  });
+
+    // Exclude products associated with the specified userId
+    if (userIdToExclude) {
+      filter.userId = { $ne: userIdToExclude };
+    }
+
+    const products = await Product.find(filter);
+
+    res.status(200).json(products);
+  } catch (error) {
+    console.error('Error occurred while fetching products:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 
   router.get('/products3/:userId', async (req, res) => {
     try {
