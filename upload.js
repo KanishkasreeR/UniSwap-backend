@@ -57,46 +57,93 @@ router.use(function(err, req, res, next) {
     }
 });
 
-router.post('/uploadProducts', (req, res) => {
-    upload(req, res, async (err) => {
-        if (err) {
-            console.error('Multer error:', err);
-            return res.status(400).json({ error: 'File upload error' });
-        }
+// router.post('/uploadProducts', (req, res) => {
+//     upload(req, res, async (err) => {
+//         if (err) {
+//             console.error('Multer error:', err);
+//             return res.status(400).json({ error: 'File upload error' });
+//         }
   
-        try {
-            const { adTitle, description, price,category,userId } = req.body;
-            const images = req.files.map(file => file.path); // Paths to the uploaded image files
+//         try {
+//             const { adTitle, description, price,category,userId } = req.body;
+//             const images = req.files.map(file => file.path); // Paths to the uploaded image files
   
-            // Upload images to Cloudinary
-            const uploadResponses = await Promise.all(images.map(image => cloudinary.uploader.upload(image)));
+//             // Upload images to Cloudinary
+//             const uploadResponses = await Promise.all(images.map(image => cloudinary.uploader.upload(image)));
   
-            // Extract URLs from Cloudinary responses
-            const imageUrls = uploadResponses.map(response => response.url);
+//             // Extract URLs from Cloudinary responses
+//             const imageUrls = uploadResponses.map(response => response.url);
 
-            // Check if the count of image URLs exceeds 5
-            if (imageUrls.length > 5) {
-                return res.status(400).json({ error: 'Maximum 5 images are allowed' });
-            }
+//             // Check if the count of image URLs exceeds 5
+//             if (imageUrls.length > 5) {
+//                 return res.status(400).json({ error: 'Maximum 5 images are allowed' });
+//             }
   
-            // Save book details to database
-            const product = new Product({
-                adTitle,
-                description,
-                price,
-                userId,
-                category, // Use the userId received from frontend
-                photos: imageUrls // Store the image URLs from Cloudinary in an array
-            });
-            await product.save();
+//             // Save book details to database
+//             const product = new Product({
+//                 adTitle,
+//                 description,
+//                 price,
+//                 userId,
+//                 category, // Use the userId received from frontend
+//                 photos: imageUrls // Store the image URLs from Cloudinary in an array
+//             });
+//             await product.save();
   
-            res.status(200).json({ message: 'Product added successfully' });
-        } catch (error) {
-            console.error('Error occurred while adding book:', error);
-            res.status(500).json({ error: 'Internal server error' });
-        }
-    });
+//             res.status(200).json({ message: 'Product added successfully' });
+//         } catch (error) {
+//             console.error('Error occurred while adding book:', error);
+//             res.status(500).json({ error: 'Internal server error' });
+//         }
+//     });
+// });
+
+router.post('/uploadProducts', (req, res) => {
+  upload(req, res, async (err) => {
+      if (err) {
+          console.error('Multer error:', err);
+          return res.status(400).json({ error: 'File upload error' });
+      }
+
+      try {
+          const { adTitle, description, price, category, userId } = req.body;
+          const images = req.files.map(file => file.path); // Paths to the uploaded image files
+
+          // Check if all required fields are provided
+          if (!adTitle || !description || !price || !category || !userId || images.length === 0) {
+              return res.status(400).json({ error: 'Please provide all required details' });
+          }
+
+          // Upload images to Cloudinary
+          const uploadResponses = await Promise.all(images.map(image => cloudinary.uploader.upload(image)));
+
+          // Extract URLs from Cloudinary responses
+          const imageUrls = uploadResponses.map(response => response.url);
+
+          // Check if the count of image URLs exceeds 5
+          if (imageUrls.length > 5) {
+              return res.status(400).json({ error: 'Maximum 5 images are allowed' });
+          }
+
+          // Save product details to the database
+          const product = new Product({
+              adTitle,
+              description,
+              price,
+              userId,
+              category, // Use the category received from the frontend
+              photos: imageUrls // Store the image URLs from Cloudinary in an array
+          });
+          await product.save();
+
+          res.status(200).json({ message: 'Product added successfully' });
+      } catch (error) {
+          console.error('Error occurred while adding product:', error);
+          res.status(500).json({ error: 'Internal server error' });
+      }
+  });
 });
+
 
 router.post('/addToCart', async (req, res) => {
   try {
