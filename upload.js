@@ -406,6 +406,20 @@ router.get('/getsellerorders', async (req, res) => {
   }
 });
 
+router.delete('/deleteproduct/:id', async (req, res) => {
+  try {
+    const deletedProduct = await Product.findByIdAndDelete(req.params.id);
+
+    if (!deletedProduct) {
+      return res.status(404).json({ status: 'failure', message: 'Product not found' });
+    }
+
+    res.status(200).json({ status: 'success', message: 'Product deleted successfully' });
+  } catch (error) {
+    console.error('Error occurred while deleting product:', error);
+    res.status(500).json({ status: 'failure', message: 'Could not delete product', error: error });
+  }
+});
 
 
 module.exports = router;
