@@ -26,7 +26,8 @@ const productSchema = new mongoose.Schema({
   },
   photos: {
     type: [String],
-    validate: [photosLimit, 'Maximum of 5 photos allowed']
+    validate: [photosLimit, 'Maximum of 5 photos allowed'],
+    required:true
   },
   // Other fields like price, condition, category, etc. can be added as needed
 }, { timestamps: true });
