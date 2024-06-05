@@ -6,61 +6,12 @@ const crypto = require('crypto');
 const auth = require("./authentication");
 const User = require("./UserSchema");
 
-// router.post('/register', async (req, res) => {
-//   try {
-//     const { name, email, password } = req.body;
-
-//     // Validate request body
-//     if (!name || !email || !password) {
-//       return res.status(400).json({ error: 'Please enter all the required fields.' });
-//     }
-
-//     // Other validation checks...
-//     if (name.length > 25) {
-//       return res.status(400).json({ error: 'Name can only be less than 25 characters.' });
-//     }
-
-//     const emailReg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-//     if (!emailReg.test(email)) {
-//       return res.status(400).json({ error: 'Please enter a valid email address.' });
-//     }
-//     if (password.length < 6) {
-//       return res.status(400).json({ error: 'Password must be at least 6 characters long.' });
-//     }
-
-//     const doesUserExist = await User.findOne({ email });
-//     if (doesUserExist) {
-//       return res.status(400).json({ error: 'User with this email already exists.' });
-//     }
-
-//     const hashedPassword = await bcrypt.hash(password, 12);
-
-//     // Create new User instance
-//     const newUser = new User({
-//       name,
-//       email,
-//       password: hashedPassword,
-//       resetPasswordToken: null, // Initial values for reset token and expiration
-//       resetPasswordExpires: null
-//     });
-
-//     // Save user to database
-//     const result = await newUser.save();
-//     result.password = undefined;
-
-//     return res.status(201).json(result);
-//   } catch (err) {
-//     console.error('Error occurred during registration:', err);
-//     return res.status(500).json({ error: 'Internal server error' });
-//   }
-// });
-
 router.post('/register', async (req, res) => {
   try {
-    const { name, email, password, pushSubscription } = req.body;
+    const { name, email, password } = req.body;
 
     // Validate request body
-    if (!name || !email || !password || !pushSubscription) {
+    if (!name || !email || !password) {
       return res.status(400).json({ error: 'Please enter all the required fields.' });
     }
 
@@ -89,7 +40,6 @@ router.post('/register', async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      pushSubscription, // Save push subscription details
       resetPasswordToken: null, // Initial values for reset token and expiration
       resetPasswordExpires: null
     });
@@ -104,6 +54,7 @@ router.post('/register', async (req, res) => {
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
+
 
 
   router.post("/login", async (req, res) => {

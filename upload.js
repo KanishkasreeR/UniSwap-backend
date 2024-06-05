@@ -301,104 +301,47 @@ router.get('/products', async (req, res) => {
     }
   });
 
-// router.post('/createorders', async (req, res) => {
-//   const { userId, sellerId, products } = req.body;
-
-//   try {
-//       // Validate the input data if necessary
-      
-//       // Create a new order
-//       const newOrder = new Order({
-//           userId,
-//           products: products.map(product => ({
-//               productId: product.productId,
-//               adTitle: product.adTitle,
-//               description: product.description,
-//               price: product.price,
-//               category: product.category,
-//               imageUrl: product.imageUrl
-//           })),
-//           sellerId,
-//           orderDate: Date.now()
-//       });
-
-//       // Save the new order
-//       const savedOrder = await newOrder.save();
-
-//       // Remove products from cart
-//       const productIds = products.map(product => product.productId);
-//       await Cart.updateOne(
-//           { userId },
-//           { $pull: { products: { productId: { $in: productIds } } } }
-//       );
-
-//       // Remove products from the product schema
-//       await Product.deleteMany({ _id: { $in: productIds } });
-
-//       res.status(201).json(savedOrder);
-//   } catch (error) {
-//       console.error('Error creating order:', error);
-//       res.status(500).json({ message: 'Failed to create order', error });
-//   }
-// });
-
 router.post('/createorders', async (req, res) => {
   const { userId, sellerId, products } = req.body;
 
   try {
-    // Validate the input data if necessary
+      // Validate the input data if necessary
+      
+      // Create a new order
+      const newOrder = new Order({
+          userId,
+          products: products.map(product => ({
+              productId: product.productId,
+              adTitle: product.adTitle,
+              description: product.description,
+              price: product.price,
+              category: product.category,
+              imageUrl: product.imageUrl
+          })),
+          sellerId,
+          orderDate: Date.now()
+      });
 
-    // Create a new order
-    const newOrder = new Order({
-      userId,
-      products: products.map(product => ({
-        productId: product.productId,
-        adTitle: product.adTitle,
-        description: product.description,
-        price: product.price,
-        category: product.category,
-        imageUrl: product.imageUrl
-      })),
-      sellerId,
-      orderDate: Date.now()
-    });
+      // Save the new order
+      const savedOrder = await newOrder.save();
 
-    // Save the new order
-    const savedOrder = await newOrder.save();
+      // Remove products from cart
+      const productIds = products.map(product => product.productId);
+      await Cart.updateOne(
+          { userId },
+          { $pull: { products: { productId: { $in: productIds } } } }
+      );
 
-    // Remove products from cart
-    const productIds = products.map(product => product.productId);
-    await Cart.updateOne(
-      { userId },
-      { $pull: { products: { productId: { $in: productIds } } } }
-    );
+      // Remove products from the product schema
+      await Product.deleteMany({ _id: { $in: productIds } });
 
-    // Remove products from the product schema
-    await Product.deleteMany({ _id: { $in: productIds } });
-
-    // Fetch the seller's push subscription details
-    const seller = await User.findById(sellerId);
-    if (!seller || !seller.pushSubscription) {
-      throw new Error('Seller push subscription not found');
-    }
-
-    // Send push notification to the seller
-    const notificationPayload = {
-      notification: {
-        title: 'New Order Received',
-        body: `You have received a new order with ${products.length} products.`,
-        data: { url: 'http://localhost:3000/' } // URL to open when notification is clicked
-      }
-    };
-
-    await webpush.sendNotification(seller.pushSubscription, JSON.stringify(notificationPayload));
-
-    res.status(201).json(savedOrder);
+      res.status(201).json(savedOrder);
   } catch (error) {
-    console.error('Error creating order:', error);
-    res.status(500).json({ message: 'Failed to create order', error });
+      console.error('Error creating order:', error);
+      res.status(500).json({ message: 'Failed to create order', error });
   }
 });
+
 
 
 // router.post('/createorders', async (req, res) => {
