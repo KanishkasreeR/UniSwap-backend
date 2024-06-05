@@ -23,7 +23,7 @@ cloudinary.config({
     api_secret: 'VC8o4lQSa551ADbsUtPtV3jIaO4'
 });
   
-// Multer upload middleware
+
 const upload = multer({ storage: storage }).array('images', 12); // Accepts up to 12 images
   
 // Multer error handler middleware
