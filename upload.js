@@ -5,6 +5,8 @@ const Cart = require('./Cart')
 const Wishlist = require('./Wishlist')
 const Product = require('./Products');
 const Order = require('./OrderSchema.js');
+const admin = require('firebase-admin');
+const serviceAccount = require('./config/serviceAccountKey.json');
 
 
 const router = express.Router();
@@ -290,42 +292,69 @@ router.get('/products', async (req, res) => {
   });
 
 // router.post('/createorders', async (req, res) => {
-//     const { userId, sellerId, products } = req.body;
+//   const { userId, sellerId, products } = req.body;
 
-//     try {
-//         // Validate the input data if necessary
-        
-//         const newOrder = new Order({
-//             userId,
-//             products: products.map(product => ({
-//                 productId: product.productId,
-//                 adTitle: product.adTitle,
-//                 description: product.description,
-//                 price: product.price,
-//                 category: product.category,
-//                 imageUrl: product.imageUrl
-//             })),
-//             sellerId,
-//             orderDate: Date.now()
-//         });
+//   try {
+//       // Validate the input data if necessary
+      
+//       // Create a new order
+//       const newOrder = new Order({
+//           userId,
+//           products: products.map(product => ({
+//               productId: product.productId,
+//               adTitle: product.adTitle,
+//               description: product.description,
+//               price: product.price,
+//               category: product.category,
+//               imageUrl: product.imageUrl
+//           })),
+//           sellerId,
+//           orderDate: Date.now()
+//       });
 
-//         // Save the new order
-//         const savedOrder = await newOrder.save();
+//       // Save the new order
+//       const savedOrder = await newOrder.save();
 
-//         // Remove products from cart
-//         const productIds = products.map(product => product.productId);
-//         await Cart.updateOne(
-//             { userId },
-//             { $pull: { products: { productId: { $in: productIds } } } }
-//         );
+//       // Remove products from cart
+//       const productIds = products.map(product => product.productId);
+//       await Cart.updateOne(
+//           { userId },
+//           { $pull: { products: { productId: { $in: productIds } } } }
+//       );
 
-//         res.status(201).json(savedOrder);
-//     } catch (error) {
-//         console.error('Error creating order:', error);
-//         res.status(500).json({ message: 'Failed to create order', error });
-//     }
+//       // Remove products from the product schema
+//       await Product.deleteMany({ _id: { $in: productIds } });
+
+//       res.status(201).json(savedOrder);
+//   } catch (error) {
+//       console.error('Error creating order:', error);
+//       res.status(500).json({ message: 'Failed to create order', error });
+//   }
 // });
 
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
+
+// Function to send push notification
+const sendNotificationToSeller = async (sellerId) => {
+  const message = {
+    notification: {
+      title: 'New Order',
+      body: 'You have a new order. Please check your orders.',
+    },
+    topic: `seller_${sellerId}`, // Use a topic to target specific seller
+  };
+
+  try {
+    await admin.messaging().send(message);
+    console.log('Push notification sent successfully to seller:', sellerId);
+  } catch (error) {
+    console.error('Error sending push notification to seller:', error);
+  }
+};
+
+// Your existing route to create orders
 router.post('/createorders', async (req, res) => {
   const { userId, sellerId, products } = req.body;
 
@@ -349,6 +378,9 @@ router.post('/createorders', async (req, res) => {
 
       // Save the new order
       const savedOrder = await newOrder.save();
+
+      // Send push notification to seller
+      sendNotificationToSeller(sellerId);
 
       // Remove products from cart
       const productIds = products.map(product => product.productId);
