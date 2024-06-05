@@ -4,6 +4,7 @@ const mongoos = require('mongoose')
 const bodyparser = require('body-parser')
 const cors = require('cors')
 
+
 const uploadRouter = require('./upload');
 const UserRouter = require('./Userauth');
 
@@ -13,6 +14,7 @@ app.use(cors())
 
 app.use('/api', uploadRouter);
 app.use('/api', UserRouter);
+
 
 async function connectDB(){
 try{
