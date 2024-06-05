@@ -4,6 +4,7 @@ const cloudinary = require('cloudinary').v2;
 const Cart = require('./Cart')
 const Wishlist = require('./Wishlist')
 const Product = require('./Products');
+const Order = require('./OrderSchema.js');
 
 
 const router = express.Router();
@@ -288,18 +289,107 @@ router.get('/products', async (req, res) => {
     }
   });
 
+  // router.post('/createorders', async (req, res) => {
+  //   const { userId, products, sellerId } = req.body;
   
+  //   const newOrder = new Order({
+  //     userId,
+  //     products,
+  //     sellerId,
+  //     orderDate: Date.now() // Explicitly set the order date to the current date and time
+  //   });
+  
+  //   try {
+  //     // Save the new order
+  //     const savedOrder = await newOrder.save();
+  
+  //     // Remove products from cart
+  //     await Cart.updateOne(
+  //       { userId },
+  //       { $pull: { products: { productId: { $in: products.map(p => p.productId) } } } }
+  //     );
+  
+  //     res.status(201).json(savedOrder);
+  //   } catch (error) {
+  //     res.status(500).json({ message: 'Failed to create order', error });
+  //   }
+  // });
 
-const categoryImages = {
-  "Fruits & Vegetables": "https://via.placeholder.com/150?text=Fruits+%26+Vegetables",
-  "Dairy & Bakery": "https://via.placeholder.com/150?text=Dairy+%26+Bakery",
-  "Staples": "https://via.placeholder.com/150?text=Staples",
-  "Snacks & Branded Foods": "https://via.placeholder.com/150?text=Snacks+%26+Branded+Foods",
-  "Beverages": "https://via.placeholder.com/150?text=Beverages",
-  "Personal Care": "https://via.placeholder.com/150?text=Personal+Care",
-  "Home Care": "https://via.placeholder.com/150?text=Home+Care",
-  "Books": "https://via.placeholder.com/150?text=Books",
-  "Pets": "https://via.placeholder.com/150?text=Pets"
-};
+  router.post('/createorders', async (req, res) => {
+    const { userId, sellerId, products } = req.body;
+
+    try {
+        // Validate the input data if necessary
+        
+        const newOrder = new Order({
+            userId,
+            products: products.map(product => ({
+                productId: product.productId,
+                adTitle: product.adTitle,
+                description: product.description,
+                price: product.price,
+                category: product.category,
+                imageUrl: product.imageUrl
+            })),
+            sellerId,
+            orderDate: Date.now()
+        });
+
+        // Save the new order
+        const savedOrder = await newOrder.save();
+
+        // Remove products from cart
+        const productIds = products.map(product => product.productId);
+        await Cart.updateOne(
+            { userId },
+            { $pull: { products: { productId: { $in: productIds } } } }
+        );
+
+        res.status(201).json(savedOrder);
+    } catch (error) {
+        console.error('Error creating order:', error);
+        res.status(500).json({ message: 'Failed to create order', error });
+    }
+});
+
+router.get('/getbuyerorders', async (req, res) => {
+  const { userId } = req.query; // Change variable name from "customerId" to "userId"
+
+  try {
+    console.log(`Fetching orders for userId: ${userId}`);
+    const orders = await Order.find({ userId }); // Update query parameter from "customerId" to "userId"
+    console.log(`Fetched orders: ${JSON.stringify(orders)}`);
+    
+    if (orders.length === 0) {
+      console.log(`No orders found for userId: ${userId}`);
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    res.status(500).json({ message: 'Failed to fetch orders', error });
+  }
+});
+
+router.get('/getsellerorders', async (req, res) => {
+  const { sellerId } = req.query; // Change variable name from "userId" to "sellerId"
+
+  try {
+    console.log(`Fetching orders for sellerId: ${sellerId}`);
+    const orders = await Order.find({ sellerId }); // Update query parameter from "userId" to "sellerId"
+    console.log(`Fetched orders: ${JSON.stringify(orders)}`);
+    
+    if (orders.length === 0) {
+      console.log(`No orders found for sellerId: ${sellerId}`);
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error fetching orders:', error);
+    res.status(500).json({ message: 'Failed to fetch orders', error });
+  }
+});
+
+
 
 module.exports = router;
