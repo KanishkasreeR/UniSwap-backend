@@ -301,114 +301,158 @@ router.get('/products', async (req, res) => {
     }
   });
 
-router.post('/createorders', async (req, res) => {
-  const { userId, sellerId, products } = req.body;
-
-  try {
-      // Validate the input data if necessary
-      
-      // Create a new order
-      const newOrder = new Order({
-          userId,
-          products: products.map(product => ({
-              productId: product.productId,
-              adTitle: product.adTitle,
-              description: product.description,
-              price: product.price,
-              category: product.category,
-              imageUrl: product.imageUrl
-          })),
-          sellerId,
-          orderDate: Date.now()
-      });
-
-      // Save the new order
-      const savedOrder = await newOrder.save();
-
-      // Remove products from cart
-      const productIds = products.map(product => product.productId);
-      await Cart.updateOne(
-          { userId },
-          { $pull: { products: { productId: { $in: productIds } } } }
-      );
-
-      // Remove products from the product schema
-      await Product.deleteMany({ _id: { $in: productIds } });
-
-      res.status(201).json(savedOrder);
-  } catch (error) {
-      console.error('Error creating order:', error);
-      res.status(500).json({ message: 'Failed to create order', error });
-  }
-});
-
-
-
 // router.post('/createorders', async (req, res) => {
 //   const { userId, sellerId, products } = req.body;
 
 //   try {
-//     // Validate the input data if necessary
+//       // Validate the input data if necessary
+      
+//       // Create a new order
+//       const newOrder = new Order({
+//           userId,
+//           products: products.map(product => ({
+//               productId: product.productId,
+//               adTitle: product.adTitle,
+//               description: product.description,
+//               price: product.price,
+//               category: product.category,
+//               imageUrl: product.imageUrl
+//           })),
+//           sellerId,
+//           orderDate: Date.now()
+//       });
 
-//     // Create a new order
-//     const newOrder = new Order({
-//       userId,
-//       products: products.map(product => ({
-//         productId: product.productId,
-//         adTitle: product.adTitle,
-//         description: product.description,
-//         price: product.price,
-//         category: product.category,
-//         imageUrl: product.imageUrl
-//       })),
-//       sellerId,
-//       orderDate: Date.now()
-//     });
+//       // Save the new order
+//       const savedOrder = await newOrder.save();
 
-//     // Save the new order
-//     const savedOrder = await newOrder.save();
+//       // Remove products from cart
+//       const productIds = products.map(product => product.productId);
+//       await Cart.updateOne(
+//           { userId },
+//           { $pull: { products: { productId: { $in: productIds } } } }
+//       );
 
-//     // Remove products from cart
-//     const productIds = products.map(product => product.productId);
-//     await Cart.updateOne(
-//       { userId },
-//       { $pull: { products: { productId: { $in: productIds } } } }
-//     );
-//     console.log("sellerId" + sellerId);
-//     // Remove products from the product schema
-//     await Product.deleteMany({ _id: { $in: productIds } });
+//       // Remove products from the product schema
+//       await Product.deleteMany({ _id: { $in: productIds } });
 
-//     // Fetch the seller's push subscription details
-//     const seller = await User.findById(sellerId);
-//     console.log('Seller push subscription:', seller.email);
-//     console.log('Seller push subscription:', seller.pushSubscription);
-//     if (!seller) {
-//       throw new Error('Seller not found');
-//     }
-//     if (!seller.pushSubscription) {
-//       throw new Error('Seller push subscription not found');
-//     }
-
-//     // Log the seller's push subscription
-//     console.log('Seller push subscription:', seller.pushSubscription);
-
-//     // Send push notification to the seller
-//     const notificationPayload = {
-//       notification: {
-//         title: 'New Order Received',
-//         body: `You have received a new order with ${products.length} products.`,
-//         data: { url: 'http://localhost:3000/' } // URL to open when notification is clicked
-//       }
-//     };
-
-//     await webpush.sendNotification(seller.pushSubscription, JSON.stringify(notificationPayload));
-
-//     res.status(201).json(savedOrder);
+//       res.status(201).json(savedOrder);
 //   } catch (error) {
-//     console.error('Error creating order:', error);
-//     res.status(500).json({ message: 'Failed to create order', error });
+//       console.error('Error creating order:', error);
+//       res.status(500).json({ message: 'Failed to create order', error });
 //   }
 // });
+
+const nodemailer = require('nodemailer');
+
+router.post('/createorders', async (req, res) => {
+  const { userId, sellerId, products } = req.body;
+
+  try {
+    // Validate the input data if necessary
+
+    // Create a new order
+    const newOrder = new Order({
+      userId,
+      products: products.map(product => ({
+        productId: product.productId,
+        adTitle: product.adTitle,
+        description: product.description,
+        price: product.price,
+        category: product.category,
+        imageUrl: product.imageUrl
+      })),
+      sellerId,
+      orderDate: Date.now()
+    });
+
+    // Save the new order
+    const savedOrder = await newOrder.save();
+
+    // Remove products from cart
+    const productIds = products.map(product => product.productId);
+    await Cart.updateOne(
+      { userId },
+      { $pull: { products: { productId: { $in: productIds } } } }
+    );
+
+    // Remove products from the product schema
+    await Product.deleteMany({ _id: { $in: productIds } });
+
+    // Send email to the user with the seller's ID
+    await sendEmailToUser(userId, sellerId);
+
+    // Send email to the seller
+    await sendEmailToSeller(userId, sellerId);
+
+    res.status(201).json(savedOrder);
+  } catch (error) {
+    console.error('Error creating order:', error);
+    res.status(500).json({ message: 'Failed to create order', error });
+  }
+});
+
+require('dotenv').config({ path: "./config.env" });
+
+async function sendEmailToUser(userId, sellerId) {
+  try {
+    // Fetch user and seller details from the database
+    const user = await User.findById(userId);
+    const seller = await User.findById(sellerId);
+
+    // Create transporter
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    // Email content
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: user.email,
+      subject: 'Order Confirmation',
+      text: `Dear ${user.name},\n\nYour order has been successfully placed.\n\nThank you for your purchase!\n\nBest regards,\nThe Team`
+    };
+
+    // Send email
+    await transporter.sendMail(mailOptions);
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
+  }
+}
+
+async function sendEmailToSeller(userId, sellerId) {
+  try {
+    // Fetch seller details from the database
+    const seller = await User.findById(sellerId);
+
+    // Create transporter
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.EMAIL_USER,
+        pass: process.env.EMAIL_PASS
+      }
+    });
+
+    // Email content
+    const mailOptions = {
+      from: process.env.EMAIL_USER,
+      to: seller.email,
+      subject: 'New Order Notification',
+      text: `Dear ${seller.name},\n\nYou have a new order on your website. Please login to your account to view the details.\n\nBest regards,\nThe Team`
+    };
+
+    // Send email
+    await transporter.sendMail(mailOptions);
+  } catch (error) {
+    console.error('Error sending email:', error);
+    throw error;
+  }
+}
 
 
 
